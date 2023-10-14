@@ -188,10 +188,12 @@ def desenhar_tela(tela, passaros, canos, chao, pontos):
     tela.blit(texto_altura_passaro, (10, 30))
     chao.desenhar(tela)
     pygame.draw.line(tela, (255, 255, 255), (passaro.x, passaro.y), (cano.rect_base.x, cano.rect_base.y))
+    pygame.draw.line(tela, (255, 255, 255), (passaro.x, passaro.y), (cano.rect_topo.bottomleft[0], cano.rect_topo.bottomleft[1]))
     pygame.display.update()
 
 def main():
-    passaros = [Passaro(230, 350)]
+    #passaros = [Passaro(230, 350)]
+    passaros = [Passaro(230, 120)]
     chao = Chao(730)
     canos = [Cano(700)]
     tela = pygame.display.set_mode((TELA_LARGURA, TELA_ALTURA))
