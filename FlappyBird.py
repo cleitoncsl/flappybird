@@ -214,8 +214,8 @@ def desenhar_tela(tela, passaros, canos, chao, pontos):
 def main(genomas, config): #Fitness Function
     global geracao, qtde, canos
 
-    Cano.VELOCIDADE += 0.2
-    Cano.DISTANCIA = random.randint(150, 155)
+    Cano.VELOCIDADE += 0.1
+    Cano.DISTANCIA = random.randint(145, 150)
     geracao += 1
 
     if ai_jogando:
