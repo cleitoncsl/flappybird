@@ -1,9 +1,13 @@
 import os
 import pygame
 import random
+import neat
 
-TELA_LARGURA= 500
-TELA_ALTURA= 800
+ai_jogando = True
+geracao = 0
+
+TELA_LARGURA = 500
+TELA_ALTURA = 800
 
 IMAGEM_CANO = pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'pipe.png')))
 IMAGEM_CHAO = pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'base.png')))
@@ -16,8 +20,6 @@ IMAGENS_PASSARO = [
 
 pygame.font.init()
 FONTE_PONTOS = pygame.font.SysFont('arial', 20)
-
-
 
 class Passaro:
     IMGS = IMAGENS_PASSARO
@@ -97,8 +99,9 @@ class Passaro:
         return pygame.mask.from_surface(self.imagem)
 
 class Cano():
-    DISTANCIA = 200
-    VELOCIDADE = 5
+    #DISTANCIA = 150
+    DISTANCIA = random.randint(150, 200)
+    VELOCIDADE = 10
 
     def __init__(self, x):
         self.x = x
@@ -113,7 +116,8 @@ class Cano():
 
 
     def definir_altura(self):
-        self.altura = random.randint(50, 450)
+        #self.altura = random.randint(50, 450)
+        self.altura = random.randint(200, 500)
         self.pos_topo = self.altura - self.CANO_TOPO.get_height()
         self.pos_base = self.altura + self.DISTANCIA
 
@@ -123,6 +127,7 @@ class Cano():
     def desenhar(self, tela):
         tela.blit(self.CANO_TOPO, (self.x, self.pos_topo))
         tela.blit(self.CANO_BASE, (self.x, self.pos_base))
+
         self.rect_base = pygame.Rect(self.x, self.pos_base, self.CANO_BASE.get_width(), self.CANO_BASE.get_height())
         pygame.draw.rect(tela, self.color,
                          (self.rect_base.x, self.rect_base.y, self.rect_base.width, self.rect_base.height), 5)
@@ -174,50 +179,105 @@ class Chao():
 
 def desenhar_tela(tela, passaros, canos, chao, pontos):
     tela.blit(IMAGEM_BACKGROUND, (0, 0))
+
     for passaro in passaros:
         passaro.desenhar(tela)
+
     for cano in canos:
         cano.desenhar(tela)
 
     texto_pontuacao = FONTE_PONTOS.render(f"Pontuação: {pontos}", 1, (255, 255, 255))
-    texto_angulo = FONTE_PONTOS.render(f"Angulo: {passaro.angulo}", 1, (255, 255, 255))
-    texto_altura_passaro = FONTE_PONTOS.render(f"Altura: {passaro.altura}", 1, (255, 255, 255))
-
     tela.blit(texto_pontuacao, (TELA_LARGURA - 10 - texto_pontuacao.get_width(), 10))
-    tela.blit(texto_angulo, (10, 10))
+    #texto_angulo = FONTE_ONTOS.render(f"Angulo: {passaro.angulo}", 1, (255, 255, 255))
+    texto_altura_passaro = FONTE_PONTOS.render(f"Altura: {cano.altura}", 1, (255, 255, 255))
+    texto_altura_cano = FONTE_PONTOS.render(f"Tamanho: {cano.DISTANCIA}", 1, (255, 255, 255))
+
+    if ai_jogando:
+        texto_geracao = FONTE_PONTOS.render(f"Geração: {geracao}", 1, (255, 255, 255))
+        tela.blit(texto_geracao, (10, 10))
+
+        texto_geracao = FONTE_PONTOS.render(f"Qtd: {len(passaros)} -> {qtde}", 1, (255, 255, 255))
+        tela.blit(texto_geracao, (10, 70))
+
+        texto = FONTE_PONTOS.render(f"Velocidade: {cano.VELOCIDADE:.1f}", 1, (255, 255, 255))
+        tela.blit(texto, (10, 90))
+
+    #tela.blit(texto_angulo, (10, 10))
     tela.blit(texto_altura_passaro, (10, 30))
+    tela.blit(texto_altura_cano, (10, 50))
+
     chao.desenhar(tela)
-    pygame.draw.line(tela, (255, 255, 255), (passaro.x, passaro.y), (cano.rect_base.x, cano.rect_base.y))
-    pygame.draw.line(tela, (255, 255, 255), (passaro.x, passaro.y), (cano.rect_topo.bottomleft[0], cano.rect_topo.bottomleft[1]))
+    #pygame.draw.line(tela, (255, 255, 255), (passaro.x, passaro.y), (cano.rect_base.x, cano.rect_base.y))
+    #pygame.draw.line(tela, (255, 255, 255), (passaro.x, passaro.y), (cano.rect_topo.bottomleft[0], cano.rect_topo.bottomleft[1]))
     pygame.display.update()
 
-def main():
-    #passaros = [Passaro(230, 350)]
-    passaros = [Passaro(230, 120)]
+def main(genomas, config): #Fitness Function
+    global geracao, qtde, canos
+
+    Cano.VELOCIDADE += 0.2
+    Cano.DISTANCIA = random.randint(150, 155)
+    geracao += 1
+
+    if ai_jogando:
+        redes = []
+        lista_genomas = []
+        passaros = []
+
+        for _, genoma in genomas:
+            rede = neat.nn.FeedForwardNetwork.create(genoma, config)
+            redes.append(rede)
+            genoma.fitness = 0
+            lista_genomas.append(genoma)
+            #passaros.append(Passaro(230, 120))
+            passaros.append(Passaro(50, 120))
+
+
+    else:
+        # passaros = [Passaro(230, 350)]
+        passaros = [Passaro(50, 350)]
+
     chao = Chao(730)
     canos = [Cano(700)]
     tela = pygame.display.set_mode((TELA_LARGURA, TELA_ALTURA))
     pontos = 0
     relogio = pygame.time.Clock()
-
     rodando = True
+    qtde = len(passaros)
     while rodando:
         relogio.tick(30)
-
         # iteração com usuário
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
                 pygame.quit()
                 quit()
-            if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_SPACE:
-                    for passaro in passaros:
-                        passaro.pular()
+            if not ai_jogando:
+                if evento.type == pygame.KEYDOWN:
+                    if evento.key == pygame.K_SPACE:
+                        for passaro in passaros:
+                            passaro.pular()
+        indice_cano = 0
+        if len(passaros) > 0:
+            if len(canos) > 1 and passaros[0].x > (canos[0].x + canos[0].CANO_TOPO.get_width()):
+                indice_cano = 1
+
+        else:
+            rodando = False
+            break
+
 
         # mover as coisas
-        for passaro in passaros:
+        for i, passaro in enumerate(passaros):
             passaro.mover()
+            # aumentar a fitness do passaro
+            lista_genomas[i].fitness += 0.1
+            output = redes[i].activate((passaro.y,
+                                        abs(passaro.y - canos[indice_cano].altura),
+                                        abs(passaro.y - canos[indice_cano].pos_base)))
+            # -1 e 1 -> se o output for maior que 0,5 ele pula
+            if output[0] > 0.5:
+                passaro.pular()
+            #
         chao.mover()
 
         adicionar_cano = False
@@ -226,6 +286,10 @@ def main():
             for i, passaro in enumerate(passaros):
                 if cano.colidir(passaro):
                     passaros.pop(i)
+                    if ai_jogando:
+                        lista_genomas[i].fitness -= 1
+                        lista_genomas.pop(i)
+                        redes.pop(i)
                 if not cano.passou and passaro.x > cano.x:
                     cano.passou = True
                     adicionar_cano = True
@@ -236,16 +300,39 @@ def main():
 
         if adicionar_cano:
             pontos += 1
-            canos.append(Cano(600))
+            #canos.append(Cano(600))
+            canos.append(Cano(650))
+            for genoma in lista_genomas:
+                genoma.fitness += 5
+
         for cano in remover_canos:
             canos.remove(cano)
 
         for i, passaro in enumerate(passaros):
             if (passaro.y + passaro.imagem.get_height()) > chao.y or passaro.y < 0:
-                passaro.pop(i)
+                passaros.pop(i)
+                if ai_jogando:
+                    lista_genomas.pop(i)
+                    redes.pop(i)
 
         desenhar_tela(tela, passaros, canos, chao, pontos)
 
+def rodar(caminho_config):
+    config = neat.config.Config(neat.DefaultGenome,
+                                neat.DefaultReproduction,
+                                neat.DefaultSpeciesSet,
+                                neat.DefaultStagnation, caminho_config)
+
+    populacao = neat.Population(config)
+    populacao.add_reporter(neat.StdOutReporter(True))
+    populacao.add_reporter(neat.StatisticsReporter())
+
+    if ai_jogando:
+        populacao.run(main, 100)
+    else:
+        main(None, None)
 
 if __name__ == '__main__':
-    main()
+    caminho = os.path.dirname(__file__)
+    caminho_config = os.path.join(caminho, 'config.txt')
+    rodar(caminho_config)
